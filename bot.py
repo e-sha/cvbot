@@ -1,8 +1,5 @@
-from argparse import ArgumentParser
 import cv2
 import io
-import json
-from pathlib import Path
 import telebot
 import traceback
 import sys
@@ -10,20 +7,6 @@ import sys
 from .utils.command import Command
 from .utils.logger import Logger
 from .utils.message import MessageType, ImageData, TextData
-from .utils.processor import Processor
-
-
-def parse_args():
-    parser = ArgumentParser()
-    parser.add_argument('-c',
-                        '--config',
-                        help='path to a config file',
-                        type=Path)
-    parser.add_argument('-l',
-                        '--logpath',
-                        help='path to a directory with log files',
-                        type=Path)
-    return parser.parse_args()
 
 
 class Bot:
@@ -96,12 +79,3 @@ class Bot:
             del buf
         else:
             assert False, f'unsupported data type {type(data)}'
-
-
-if __name__ == '__main__':
-    args = parse_args()
-    config = json.loads(args.config.read_text())
-    args.config.unlink()
-    args.__dict__.pop('config')
-    processor = Processor(config['camera_id'])
-    Bot(config.pop('token', None), processor, args.logpath)
