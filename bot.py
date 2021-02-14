@@ -63,7 +63,7 @@ class Bot:
         self.bot.polling(none_stop=True, interval=0)
 
     def _construct_default_commands(self):
-        self._CMD = {t: {} for t in MessageType}
+        self._CMD = {MessageType.TEXT: {}}
         self._CMD[MessageType.TEXT]['/stat'] = Command(
                 'Prints usage statistics', self._get_stat)
         self._CMD[MessageType.TEXT]['/help'] = Command(
@@ -72,19 +72,31 @@ class Bot:
     def _join_commands(self, processor):
         processor_cmds = processor.get_commands()
         for cmd_type, cmds in processor_cmds.items():
-            # check duplicate
-            common_cmds = set(self._CMD[cmd_type].keys()) \
-                          .intersection(set(cmds.keys()))
-            assert len(common_cmds) == 0, "Processor shouldn't contain " \
-                                          f"commands {common_cmds} of " \
-                                          f"type {cmd_type}"
-            # merge commands
-            self._CMD[cmd_type].update(cmds)
+            if isinstance(cmds, Command):
+                assert cmd_type not in self._CMD
+                self._CMD[cmd_type] = cmds
+            elif isinstance(cmds, dict):
+                # check duplicate
+                if cmd_type not in self._CMD:
+                    self._CMD[cmd_type] = {}
+                common_cmds = set(self._CMD[cmd_type].keys()) \
+                              .intersection(set(cmds.keys()))
+                assert len(common_cmds) == 0, "Processor shouldn't contain " \
+                                              f"commands {common_cmds} of " \
+                                              f"type {cmd_type}"
+                # merge commands
+                self._CMD[cmd_type].update(cmds)
+            else:
+                assert False
 
     def _print_help(self, message):
         commands = []
         for name, command in self._CMD[MessageType.TEXT].items():
-            commands.append(f'{name}: {command}')
+            commands.append(f'[TEXT] {name}: {command}')
+        if MessageType.IMAGE in self._CMD:
+            commands.append(f'[IMAGE]: {self._CMD[MessageType.IMAGE]}')
+        if MessageType.VIDEO in self._CMD:
+            commands.append(f'[VIDEO]: {self._CMD[MessageType.VIDEO]}')
         return TextData('\n'.join(commands))
 
     def _get_stat(self, message):
