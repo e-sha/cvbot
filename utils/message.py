@@ -25,3 +25,8 @@ class TextData(Data):
 class ImageData(Data):
     def __init__(self, img):
         super().__init__(MessageType.IMAGE, img)
+
+
+class VideoData(Data):
+    def __init__(self, img):
+        super().__init__(MessageType.VIDEO, img)
