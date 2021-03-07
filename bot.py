@@ -1,5 +1,6 @@
 import cv2
 import io
+import numpy as np
 from pathlib import Path
 import telebot
 import traceback
@@ -35,8 +36,7 @@ class Bot:
         @self.bot.message_handler(content_types=['video'])
         def get_video_message(message):
             self._logger.log_message(message.chat.username, message.text)
-            cmd = self._CMD[MessageType.VIDEO].get('',
-                                                   self._process_unknown)
+            cmd = self._CMD.get(MessageType.VIDEO, self._process_unknown)
             input_data = TextData(message.text)
             try:
                 result = cmd(input_data)
@@ -47,11 +47,14 @@ class Bot:
                 self._logger.log_message(message.chat.username, ''.join(exc))
 
         @self.bot.message_handler(content_types=['photo'])
-        def get_video_message(message):
+        def get_image_message(message):
             self._logger.log_message(message.chat.username, message.photo)
-            cmd = self._CMD[MessageType.IMAGE].get('',
-                                                   self._process_unknown)
-            input_data = ImageData(message)
+            cmd = self._CMD.get(MessageType.IMAGE, self._process_unknown)
+            fileID = message.photo[-1].file_id
+            file_info = self.bot.get_file(fileID)
+            encoded_image = self.bot.download_file(file_info.file_path)
+            img = cv2.imdecode(np.fromstring(encoded_image, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+            input_data = ImageData(img)
             try:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
