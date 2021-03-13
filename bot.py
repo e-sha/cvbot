@@ -50,11 +50,7 @@ class Bot:
         def get_image_message(message):
             self._logger.log_message(message.chat.username, message.photo)
             cmd = self._CMD.get(MessageType.IMAGE, self._process_unknown)
-            fileID = message.photo[-1].file_id
-            file_info = self.bot.get_file(fileID)
-            encoded_image = self.bot.download_file(file_info.file_path)
-            img = cv2.imdecode(np.fromstring(encoded_image, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
-            input_data = ImageData(img)
+            input_data = ImageData(self._get_message_photo(message))
             try:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
@@ -64,6 +60,13 @@ class Bot:
                 self._logger.log_message(message.chat.username, ''.join(exc))
 
         self.bot.polling(none_stop=True, interval=0)
+
+    def _get_message_photo(self, message, photo_idx=-1):
+        file_id = message.photo[photo_idx].file_id
+        file_info = self.bot.get_file(file_id)
+        encoded_image = self.bot.download_file(file_info.file_path)
+        return cv2.imdecode(np.fromstring(encoded_image, dtype=np.uint8),
+                            cv2.IMREAD_UNCHANGED)
 
     def _construct_default_commands(self):
         self._CMD = {MessageType.TEXT: {}}
