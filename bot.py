@@ -6,14 +6,19 @@ import telebot
 import traceback
 import sys
 
+from .src.logger import LogProcessor
 from .utils.command import Command
 from .utils.logger import Logger
 from .utils.message import MessageType, ImageData, TextData, VideoData
+from .utils.singleton_processor import SingletonProcessor
 
 
 class Bot:
     def __init__(self, token, processor, logpath):
-        self._logger = Logger(logpath)
+        self._log_processor = SingletonProcessor(LogProcessor,
+                                                 logpath/'bot.log',
+                                                 5, 1000000)
+        self._logger = Logger('bot', self._log_processor)
         self._construct_default_commands()
         self._join_commands(processor)
         self.bot = telebot.TeleBot(token)
@@ -106,8 +111,13 @@ class Bot:
         return TextData('\n'.join(commands))
 
     def _get_stat(self, message):
-        stat = self._logger.get_stat()
-        stat = '\n'.join(stat.split('\n')[-10:])
+        try:
+            stat = self._logger.get_stat()
+            stat = '\n'.join(stat.split('\n')[-10:])
+        except:
+            exc_info = sys.exc_info()
+            exc = traceback.format_exception(*exc_info)
+            self._logger.log_message(message.chat.username, ''.join(exc))
         return TextData(stat)
 
     def _process_unknown(self, message):
