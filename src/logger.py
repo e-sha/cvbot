@@ -20,11 +20,12 @@ class BaseLogger:
     def __init__(self, name):
         global log_queue
         queue_handler = logging.handlers.QueueHandler(log_queue)
+        queue_handler.setLevel(logging.INFO)
         self.logger = logging.getLogger(name)
         self.logger.addHandler(queue_handler)
 
     def log_message(self, user, text):
-        self.logger.info(f'{user}: {text}')
+        self.logger.error(f'{user}: {text}')
 
 
 class LogProcessor:
@@ -39,7 +40,6 @@ class LogProcessor:
 
         file_handler = self._get_file_hanlder(maxBytes, backupCount)
         stream_handler = self._get_stream_handler(self.stream)
-        stderr_handler = self._get_stream_handler(sys.stderr)
         global log_queue
         self.listener = logging.handlers.QueueListener(log_queue,
                                                        stream_handler,
@@ -50,7 +50,7 @@ class LogProcessor:
         self.listener.stop()
         new_logs = self.stream.getvalue()
         self.listener.start()
-        all_logs = '\n'.join([previous_logs, new_logs])
+        all_logs = '\n'.join([self.previous_logs, new_logs])
         return '\n'.join(all_logs.split('\n')[-rows:])
 
     def _read_previous_logs(self):
