@@ -42,7 +42,7 @@ class Bot:
         def get_video_message(message):
             self._logger.log_message(message.chat.username, message.text)
             cmd = self._CMD.get(MessageType.VIDEO, self._process_unknown)
-            input_data = TextData(message.text)
+            input_data = VideoData(self._get_message_video(message))
             try:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
@@ -72,6 +72,11 @@ class Bot:
         encoded_image = self.bot.download_file(file_info.file_path)
         return cv2.imdecode(np.fromstring(encoded_image, dtype=np.uint8),
                             cv2.IMREAD_UNCHANGED)
+
+    def _get_message_video(self, message):
+        file_id = message.video.file_id
+        file_info = self.bot.get_file(file_id)
+        return self.bot.download_file(file_info.file_path)
 
     def _construct_default_commands(self):
         self._CMD = {MessageType.TEXT: {}}
@@ -135,11 +140,17 @@ class Bot:
             self.bot.send_photo(user_id, buf)
             del buf
         elif isinstance(data, VideoData):
-            if isinstance(data._message_data, (str, Path)):
-                with open(data._message_data, 'rb') as buf:
+            video = data._message_data
+            if isinstance(video, (str, Path)):
+                with open(video, 'rb') as buf:
                     self.bot.send_video(user_id, buf)
             else:
-                assert isinstance(data._message_data, io.BytesIO)
-                self.bot.send_video(user_id, data._message_data)
+                assert isinstance(video, io.BytesIO)
+                video.seek(0)
+                if len(video.getvalue()) == 0:
+                    self.bot.send_message(user_id, "Empty video response")
+                else:
+                    Path('/logs/tmp').write_bytes(video.getvalue())
+                    self.bot.send_video(user_id, video)
         else:
             assert False, f'unsupported data type {type(data)}'
