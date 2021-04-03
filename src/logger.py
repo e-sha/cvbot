@@ -3,14 +3,14 @@ import logging
 import logging.handlers
 import multiprocessing as mp
 from pathlib import Path
-import sys
+import traceback
 
 
 _log_format = '%(asctime)-15s %(message)s'
 _logger_lock = mp.Lock()
 _logger_lock.acquire()
 try:
-    if not 'log_queue' in globals():
+    if 'log_queue' not in globals():
         log_queue = mp.Queue(-1)
 finally:
     _logger_lock.release()
@@ -25,7 +25,14 @@ class BaseLogger:
         self.logger.addHandler(queue_handler)
 
     def log_message(self, user, text):
-        self.logger.error(f'{user}: {text}')
+        if user is None:
+            self.logger.error(f'{text}')
+        else:
+            self.logger.error(f'{user}: {text}')
+
+    def log_traceback(self, exc_info, user=None):
+        exc = traceback.format_exception(*exc_info)
+        self.log_message(user, ''.join(exc))
 
 
 class LogProcessor:
@@ -66,9 +73,10 @@ class LogProcessor:
         return '\n'.join([x.read_text() for x in existing_logfiles])
 
     def _get_file_hanlder(self, maxBytes, backupCount):
-        file_handler = logging.handlers.RotatingFileHandler(self.logfile,
-                                                            maxBytes=maxBytes,
-                                                            backupCount=backupCount)
+        file_handler = logging.handlers \
+                              .RotatingFileHandler(self.logfile,
+                                                   maxBytes=maxBytes,
+                                                   backupCount=backupCount)
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter(_log_format))
         return file_handler

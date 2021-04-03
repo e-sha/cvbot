@@ -3,7 +3,6 @@ import io
 import numpy as np
 from pathlib import Path
 import telebot
-import traceback
 import sys
 
 from .src.logger import LogProcessor
@@ -34,22 +33,23 @@ class Bot:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
             except Exception:
-                exc_info = sys.exc_info()
-                exc = traceback.format_exception(*exc_info)
-                self._logger.log_message(message.chat.username, ''.join(exc))
+                self._logger.log_traceback(sys.exc_info(),
+                                           message.chat.username)
 
         @self.bot.message_handler(content_types=['video'])
         def get_video_message(message):
-            self._logger.log_message(message.chat.username, message.text)
+            text = 'video ' + ('without text'
+                               if message.text is None
+                               else f'with "{message.text}"')
+            self._logger.log_message(message.chat.username, text)
             cmd = self._CMD.get(MessageType.VIDEO, self._process_unknown)
             input_data = VideoData(self._get_message_video(message))
             try:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
             except Exception:
-                exc_info = sys.exc_info()
-                exc = traceback.format_exception(*exc_info)
-                self._logger.log_message(message.chat.username, ''.join(exc))
+                self._logger.log_traceback(sys.exc_info(),
+                                           message.chat.username)
 
         @self.bot.message_handler(content_types=['photo'])
         def get_image_message(message):
@@ -60,9 +60,8 @@ class Bot:
                 result = cmd(input_data)
                 self._return_data(message.from_user.id, result)
             except Exception:
-                exc_info = sys.exc_info()
-                exc = traceback.format_exception(*exc_info)
-                self._logger.log_message(message.chat.username, ''.join(exc))
+                self._logger.log_traceback(sys.exc_info(),
+                                           message.chat.username)
 
         self.bot.polling(none_stop=True, interval=0)
 
@@ -96,7 +95,7 @@ class Bot:
                 if cmd_type not in self._CMD:
                     self._CMD[cmd_type] = {}
                 common_cmds = set(self._CMD[cmd_type].keys()) \
-                              .intersection(set(cmds.keys()))
+                    .intersection(set(cmds.keys()))
                 assert len(common_cmds) == 0, "Processor shouldn't contain " \
                                               f"commands {common_cmds} of " \
                                               f"type {cmd_type}"
@@ -119,10 +118,8 @@ class Bot:
         try:
             stat = self._logger.get_stat()
             stat = '\n'.join(stat.split('\n')[-10:])
-        except:
-            exc_info = sys.exc_info()
-            exc = traceback.format_exception(*exc_info)
-            self._logger.log_message(message.chat.username, ''.join(exc))
+        except Exception:
+            self._logger.log_traceback(sys.exc_info(), message.chat.username)
         return TextData(stat)
 
     def _process_unknown(self, message):
