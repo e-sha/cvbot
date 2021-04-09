@@ -5,6 +5,7 @@ from pathlib import Path
 import telebot
 import sys
 
+from .base_bot import BaseBot
 from .src.logger import LogProcessor
 from .utils.command import Command
 from .utils.logger import Logger
@@ -12,58 +13,52 @@ from .utils.message import MessageType, ImageData, TextData, VideoData
 from .utils.singleton_processor import SingletonProcessor
 
 
-class Bot:
+class Bot(BaseBot):
     def __init__(self, token, processor, logpath):
-        self._log_processor = SingletonProcessor(LogProcessor,
-                                                 logpath/'bot.log',
-                                                 5, 1000000)
-        self._logger = Logger('bot', self._log_processor)
-        self._construct_default_commands()
-        self._join_commands(processor)
+        super().__init__(processor, logpath/'bot.log')
         self.bot = telebot.TeleBot(token)
         del token
 
         @self.bot.message_handler(content_types=['text'])
         def get_text_message(message):
-            self._logger.log_message(message.chat.username, message.text)
-            cmd = self._CMD[MessageType.TEXT].get(message.text,
-                                                  self._process_unknown)
-            input_data = TextData(message.text)
             try:
-                result = cmd(input_data)
-                self._return_data(message.from_user.id, result)
+                input_data = TextData(message.text)
+                self._process_message(message.from_user.id,
+                                      input_data,
+                                      message.chat.username)
             except Exception:
                 self._logger.log_traceback(sys.exc_info(),
                                            message.chat.username)
 
         @self.bot.message_handler(content_types=['video'])
         def get_video_message(message):
-            text = 'video ' + ('without text'
-                               if message.text is None
-                               else f'with "{message.text}"')
-            self._logger.log_message(message.chat.username, text)
-            cmd = self._CMD.get(MessageType.VIDEO, self._process_unknown)
-            input_data = VideoData(self._get_message_video(message))
             try:
-                result = cmd(input_data)
-                self._return_data(message.from_user.id, result)
+                input_data = VideoData(self._get_message_video(message))
+                self._process_message(message.from_user.id,
+                                      input_data,
+                                      message.chat.username)
             except Exception:
                 self._logger.log_traceback(sys.exc_info(),
                                            message.chat.username)
 
         @self.bot.message_handler(content_types=['photo'])
         def get_image_message(message):
-            self._logger.log_message(message.chat.username, message.photo)
-            cmd = self._CMD.get(MessageType.IMAGE, self._process_unknown)
-            input_data = ImageData(self._get_message_photo(message))
             try:
-                result = cmd(input_data)
-                self._return_data(message.from_user.id, result)
+                input_data = ImageData(self._get_message_photo(message))
+                self._process_message(message.from_user.id,
+                                      input_data,
+                                      message.chat.username)
             except Exception:
                 self._logger.log_traceback(sys.exc_info(),
                                            message.chat.username)
 
         self.bot.polling(none_stop=True, interval=0)
+
+    def _process_message(self, user_id, message, username):
+        self._log_message(username, message)
+        cmd = self._get_command(message)
+        result = cmd(message)
+        self._return_data(user_id, result)
 
     def _get_message_photo(self, message, photo_idx=-1):
         file_id = message.photo[photo_idx].file_id
@@ -77,67 +72,19 @@ class Bot:
         file_info = self.bot.get_file(file_id)
         return self.bot.download_file(file_info.file_path)
 
-    def _construct_default_commands(self):
-        self._CMD = {MessageType.TEXT: {}}
-        self._CMD[MessageType.TEXT]['/stat'] = Command(
-                'Prints usage statistics', self._get_stat)
-        self._CMD[MessageType.TEXT]['/help'] = Command(
-                'Prints help message', self._print_help)
-
-    def _join_commands(self, processor):
-        processor_cmds = processor.get_commands()
-        for cmd_type, cmds in processor_cmds.items():
-            if isinstance(cmds, Command):
-                assert cmd_type not in self._CMD
-                self._CMD[cmd_type] = cmds
-            elif isinstance(cmds, dict):
-                # check duplicate
-                if cmd_type not in self._CMD:
-                    self._CMD[cmd_type] = {}
-                common_cmds = set(self._CMD[cmd_type].keys()) \
-                    .intersection(set(cmds.keys()))
-                assert len(common_cmds) == 0, "Processor shouldn't contain " \
-                                              f"commands {common_cmds} of " \
-                                              f"type {cmd_type}"
-                # merge commands
-                self._CMD[cmd_type].update(cmds)
-            else:
-                assert False
-
-    def _print_help(self, message):
-        commands = []
-        for name, command in self._CMD[MessageType.TEXT].items():
-            commands.append(f'[TEXT] {name}: {command}')
-        if MessageType.IMAGE in self._CMD:
-            commands.append(f'[IMAGE]: {self._CMD[MessageType.IMAGE]}')
-        if MessageType.VIDEO in self._CMD:
-            commands.append(f'[VIDEO]: {self._CMD[MessageType.VIDEO]}')
-        return TextData('\n'.join(commands))
-
-    def _get_stat(self, message):
-        try:
-            stat = self._logger.get_stat()
-            stat = '\n'.join(stat.split('\n')[-10:])
-        except Exception:
-            self._logger.log_traceback(sys.exc_info(), message.chat.username)
-        return TextData(stat)
-
-    def _process_unknown(self, message):
-        return TextData('Unknow command.\n/help to get availabe commands')
-
     def _return_data(self, user_id, data):
         if data is None:
             return
-        if isinstance(data, TextData):
-            self.bot.send_message(user_id, data._message_data)
-        elif isinstance(data, ImageData):
+        if data.type == MessageType.TEXT:
+            self.bot.send_message(user_id, data.data)
+        elif data.type == MessageType.IMAGE:
             buf = io.BytesIO()
-            buf.write(bytes(cv2.imencode('.jpg', data._message_data)[1]))
+            buf.write(self._encode_image(data.data))
             buf.seek(0)
             self.bot.send_photo(user_id, buf)
             del buf
-        elif isinstance(data, VideoData):
-            video = data._message_data
+        elif data.type == MessageType.VIDEO:
+            video = data.data
             if isinstance(video, (str, Path)):
                 with open(video, 'rb') as buf:
                     self.bot.send_video(user_id, buf)
@@ -147,7 +94,6 @@ class Bot:
                 if len(video.getvalue()) == 0:
                     self.bot.send_message(user_id, "Empty video response")
                 else:
-                    Path('/logs/tmp').write_bytes(video.getvalue())
                     self.bot.send_video(user_id, video)
         else:
-            assert False, f'unsupported data type {type(data)}'
+            assert False, f'unsupported data type {data.type}'
