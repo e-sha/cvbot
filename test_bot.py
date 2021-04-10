@@ -2,7 +2,7 @@ import sys
 
 from .scripts.manager import read_commands, command2message
 from .utils.message import MessageType
-from .base_bot import BaseBot
+from .src.base_bot import BaseBot
 
 
 class TestBot(BaseBot):

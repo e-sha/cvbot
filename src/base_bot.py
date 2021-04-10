@@ -1,11 +1,11 @@
 import cv2
 import sys
 
-from .src.logger import LogProcessor
-from .utils.command import Command
-from .utils.logger import Logger
-from .utils.message import MessageType, ImageData, TextData, VideoData
-from .utils.singleton_processor import SingletonProcessor
+from .logger import LogProcessor
+from ..utils.command import Command
+from ..utils.logger import Logger
+from ..utils.message import MessageType, ImageData, TextData, VideoData
+from ..utils.singleton_processor import SingletonProcessor
 
 
 class BaseBot:

@@ -2,10 +2,9 @@ import cv2
 import io
 import numpy as np
 from pathlib import Path
-import telebot
 import sys
 
-from .base_bot import BaseBot
+from .src.base_bot import BaseBot
 from .src.logger import LogProcessor
 from .utils.command import Command
 from .utils.logger import Logger
@@ -16,6 +15,7 @@ from .utils.singleton_processor import SingletonProcessor
 class Bot(BaseBot):
     def __init__(self, token, processor, logpath):
         super().__init__(processor, logpath/'bot.log')
+        import telebot
         self.bot = telebot.TeleBot(token)
         del token
 
