@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 
-from .scripts.manager import read_commands, encode_file_data
+from .utils.commands import read_commands, encode_file_data
 from .utils.message import MessageType, Data
 
 

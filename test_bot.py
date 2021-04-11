@@ -1,6 +1,6 @@
 import sys
 
-from .scripts.manager import read_commands, command2message
+from .utils.commands import read_commands, command2message
 from .utils.message import MessageType
 from .src.base_bot import BaseBot
 
