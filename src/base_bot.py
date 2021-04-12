@@ -15,6 +15,11 @@ class BaseBot:
                                                  5, 1000000)
         self._logger = Logger('bot', self._log_processor)
         self._construct_commands(processor)
+        self._processor = processor
+
+    def terminate(self):
+        self._processor.terminate()
+        self._log_processor.terminate()
 
     def _process_unknown(self, message):
         return TextData('Unknow command.\n/help to get availabe commands')

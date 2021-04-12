@@ -13,6 +13,7 @@ class TestBot(BaseBot):
         for command in read_commands(commands_path):
             try:
                 idx, message = command2message(command)
+                print(idx)
                 cmd = self._get_command(message)
 
                 self._log_message('test_user', message)
@@ -23,6 +24,7 @@ class TestBot(BaseBot):
                 self._logger.log_traceback(sys.exc_info(),
                                            'test_user')
                 raise
+        self.terminate()
 
     def _return_data(self, user, data, idx):
         name = str(idx)

@@ -57,6 +57,10 @@ class SingletonProcessor:
         assert status == 'ready'
         controll_queue.close()
 
+    def terminate(self):
+        self._processor.terminate()
+        self._processor.join()
+
     @staticmethod
     def _is_port_in_use(port):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
