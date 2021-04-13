@@ -13,7 +13,7 @@ An interface for creating a telegram bot with computer vision.
 # Usage
 
 In order to run the bot create a Bot object with your processor.
-```Python
+```
 from cvbot import
 Bot(token, processor, logpath)
 ```
@@ -59,7 +59,17 @@ VIDEO and FILE messages contain a `io.BytesIO` of the file.
 To debug your bot you can try [TestBot](https://github.com/e-sha/cvbot/blob/master/test_bot.py) instead of [Bot](https://github.com/e-sha/cvbot/blob/master/bot.py).
 In this mode the bot receives commands from a file and writes results to the output directory.
 
-Use manage.py to create commands for debugging.
+Use `cvbot.command_manager` to create commands for debugging:
+```Python
+# display commands in commands.txt file
+python -m cvbot.command_manager -i data/commands.txt list
+# add "/help" as a text command 
+python -m cvbot.command_manager -i data/commands.txt add -t TEXT --text "/help"
+# add image.jpg as an image command
+python -m cvbot.command_manager -i data/commands.txt add -t IMAGE --image image.jpg
+# add video.mkv as a video comand
+python -m cvbot.command_manager -i data/commands.txt add -t VIDEO --video video.mkv
+```
 
 # Example
 1. [CamBot](https://github.com/e-sha/cambot) shows an image from a webcam with the detected objects.
